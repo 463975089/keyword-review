@@ -1,0 +1,13 @@
+keywords:
+  - type: string
+    value: "password"
+    message: "Hardcoded password detected. Use env vars or a secret manager."
+  - type: string
+    value: "TODO"
+    message: "Please resolve this TODO before merging."
+  - type: regex
+    value: "sk-[a-zA-Z0-9]{32,}"
+    message: "Possible OpenAI API key leak."
+  - type: regex
+    value: "(?i)secret\\s*=\\s*['\"][^'\"]+['\"]"
+    message: "Possible hardcoded secret literal."
