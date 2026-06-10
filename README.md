@@ -19,8 +19,8 @@ jobs:
   check:
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
-      - uses: your-org/keyword-checker@v1
+      - uses: actions/checkout@v5
+      - uses: 463975089/keyword-review@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
