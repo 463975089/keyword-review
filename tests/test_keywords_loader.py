@@ -66,6 +66,26 @@ def test_empty_keywords_list(tmp_path):
     assert load_rules(str(path)) == []
 
 
+def test_keywords_must_be_list_or_returns_empty(tmp_path, capsys):
+    # YAML allows `keywords: "password"` (string) or `keywords: 42` (int) by accident.
+    # The loader should reject these with a single clear warning, not iterate
+    # character-by-character and spam warnings.
+    path_str = write_yaml(tmp_path, "keywords: password\n")
+    rules = load_rules(str(path_str))
+    assert rules == []
+    err = capsys.readouterr().err
+    assert "list" in err.lower()
+    # Make sure we did NOT spam per-character warnings.
+    assert err.lower().count("skipping") <= 1
+
+    path_int = write_yaml(tmp_path, "keywords: 42\n")
+    rules = load_rules(str(path_int))
+    assert rules == []
+    err = capsys.readouterr().err
+    assert "list" in err.lower()
+    assert err.lower().count("skipping") <= 1
+
+
 def test_unknown_type_is_skipped_with_warning(tmp_path, capsys):
     path = write_yaml(tmp_path, """
         keywords:

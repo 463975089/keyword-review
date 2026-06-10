@@ -35,7 +35,13 @@ def load_rules(path: str) -> list[Rule]:
     with open(path, "r", encoding="utf-8") as fh:
         data = yaml.safe_load(fh) or {}
 
-    raw_rules = data.get("keywords") or []
+    raw_rules = data.get("keywords")
+    if raw_rules is None:
+        raw_rules = []
+    if not isinstance(raw_rules, list):
+        _warn(f"'keywords' must be a list, got {type(raw_rules).__name__}; "
+              f"no rules will be applied")
+        return []
     rules: list[Rule] = []
     for entry in raw_rules:
         if not isinstance(entry, dict):
