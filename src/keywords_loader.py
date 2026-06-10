@@ -32,8 +32,13 @@ def load_rules(path: str) -> list[Rule]:
         _warn(f"keywords config not found at {path}; no rules will be applied")
         return []
 
-    with open(path, "r", encoding="utf-8") as fh:
-        data = yaml.safe_load(fh) or {}
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            data = yaml.safe_load(fh) or {}
+    except OSError as exc:
+        raise ValueError(f"Cannot read keywords config at {path}: {exc}") from exc
+    except yaml.YAMLError as exc:
+        raise ValueError(f"Invalid YAML in keywords config at {path}: {exc}") from exc
 
     raw_rules = data.get("keywords")
     if raw_rules is None:

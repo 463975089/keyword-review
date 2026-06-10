@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Mapping
+from typing import Mapping, NoReturn
+
+import requests
 
 from .keywords_loader import load_rules, Rule
 from .diff_parser import iter_added_lines
@@ -18,7 +20,7 @@ def _warn(msg: str) -> None:
     print(f"[keyword-checker] WARNING: {msg}", file=sys.stderr)
 
 
-def _fail(msg: str) -> None:
+def _fail(msg: str) -> NoReturn:
     print(f"[keyword-checker] ERROR: {msg}", file=sys.stderr)
     raise SystemExit(2)
 
@@ -93,14 +95,23 @@ def main(env: Mapping[str, str] | None = None) -> int:
     keywords_path = env.get("KEYWORDS_PATH", ".github/keywords.yml")
     no_violation_action = env.get("NO_VIOLATION_ACTION", "comment")
 
-    rules = load_rules(keywords_path)
-    files, truncated_extra = get_pr_files(repo, pr_number, token,
-                                          max_files=_MAX_FILES)
+    try:
+        rules = load_rules(keywords_path)
+    except ValueError as exc:
+        _fail(str(exc))
+    try:
+        files, truncated_extra = get_pr_files(repo, pr_number, token,
+                                              max_files=_MAX_FILES)
+    except requests.HTTPError as exc:
+        _fail(f"GitHub API error fetching PR files: {exc}")
     comments = _build_comments(files, rules)
     body, event = _build_body(len(comments), truncated_extra, no_violation_action)
 
-    post_review(repo, pr_number, token,
-                comments=comments, body=body, event=event)
+    try:
+        post_review(repo, pr_number, token,
+                    comments=comments, body=body, event=event)
+    except requests.HTTPError as exc:
+        _fail(f"GitHub API error posting review: {exc}")
 
     print(f"[keyword-checker] {len(comments)} violation(s) reported; "
           f"event={event}; scanned={len(files)} file(s); "

@@ -86,6 +86,24 @@ def test_keywords_must_be_list_or_returns_empty(tmp_path, capsys):
     assert err.lower().count("skipping") <= 1
 
 
+def test_malformed_yaml_raises_value_error(tmp_path):
+    """A syntactically invalid YAML file should raise ValueError, not a raw YAMLError."""
+    path = tmp_path / "keywords.yml"
+    path.write_text("keywords:\n  - type: string\n    value: [unclosed\n")
+    with pytest.raises(ValueError, match="[Ii]nvalid YAML"):
+        load_rules(str(path))
+
+
+def test_unreadable_file_raises_value_error(tmp_path):
+    """An OSError opening the config file should raise ValueError."""
+    from unittest.mock import patch, mock_open
+    path = tmp_path / "keywords.yml"
+    path.write_text("keywords: []\n")
+    with patch("builtins.open", side_effect=PermissionError("Permission denied")):
+        with pytest.raises(ValueError, match="[Cc]annot read"):
+            load_rules(str(path))
+
+
 def test_unknown_type_is_skipped_with_warning(tmp_path, capsys):
     path = write_yaml(tmp_path, """
         keywords:
@@ -99,3 +117,4 @@ def test_unknown_type_is_skipped_with_warning(tmp_path, capsys):
     rules = load_rules(str(path))
     assert [r.value for r in rules] == ["TODO"]
     assert "unknown rule type" in capsys.readouterr().err.lower()
+

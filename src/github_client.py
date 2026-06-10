@@ -19,9 +19,9 @@ def get_pr_files(repo: str, pr_number: int, token: str,
                  *, max_files: int = 300) -> tuple[list[dict], int]:
     """Return (files, truncated_extra).
 
-    Paginates until the next page is short (<per_page) or we hit `max_files`.
-    `truncated_extra` is the number of additional files visible on a peek page
-    past the cap; 0 if we collected every file.
+    Paginates until a short page (<per_page) is seen or we hit `max_files`.
+    `truncated_extra` is the total number of files beyond the cap across all
+    remaining pages; 0 if every file was collected.
     """
     url = f"{GITHUB_API}/repos/{repo}/pulls/{pr_number}/files"
     files: list[dict] = []
@@ -31,16 +31,30 @@ def get_pr_files(repo: str, pr_number: int, token: str,
                             headers=_headers(token), timeout=30)
         resp.raise_for_status()
         batch = resp.json()
+        if not isinstance(batch, list):
+            raise ValueError(
+                f"GitHub API returned unexpected response type "
+                f"{type(batch).__name__!r} for files list"
+            )
         files.extend(batch)
         if len(files) >= max_files:
             files = files[:max_files]
-            # Peek one more page to report how many we knowingly skipped.
-            resp = requests.get(url,
-                                params={"per_page": _PER_PAGE, "page": page + 1},
-                                headers=_headers(token), timeout=30)
-            resp.raise_for_status()
-            extra = resp.json()
-            return files, len(extra)
+            # Count ALL remaining files across every overflow page.
+            truncated = 0
+            peek_page = page + 1
+            while True:
+                resp = requests.get(url,
+                                    params={"per_page": _PER_PAGE, "page": peek_page},
+                                    headers=_headers(token), timeout=30)
+                resp.raise_for_status()
+                extra = resp.json()
+                if not isinstance(extra, list):
+                    break
+                truncated += len(extra)
+                if len(extra) < _PER_PAGE:
+                    break
+                peek_page += 1
+            return files, truncated
         if len(batch) < _PER_PAGE:
             return files, 0
         page += 1

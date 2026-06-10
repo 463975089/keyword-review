@@ -14,6 +14,11 @@ def match_line(line: str, rules: list[Rule]) -> list[Rule]:
             if rule.value in line:
                 hits.append(rule)
         elif rule.kind == "regex":
-            if rule.compiled is not None and rule.compiled.search(line):
+            if rule.compiled is None:
+                raise ValueError(
+                    f"regex Rule with value={rule.value!r} has compiled=None; "
+                    "construct Rule via load_rules() or pass a compiled pattern"
+                )
+            if rule.compiled.search(line):
                 hits.append(rule)
     return hits

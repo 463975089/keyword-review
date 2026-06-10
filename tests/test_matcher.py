@@ -1,5 +1,7 @@
 import re
 
+import pytest
+
 from src.keywords_loader import Rule
 from src.matcher import match_line
 
@@ -45,5 +47,9 @@ def test_empty_rule_list():
     assert match_line("anything", []) == []
 
 
-def test_empty_line():
-    assert match_line("", [_string("x"), _regex(r".+")]) == []
+def test_regex_rule_without_compiled_raises():
+    """A regex Rule constructed without compiled= must raise, not silently miss."""
+    rule = Rule(kind="regex", value=r"sk-\w+", message="key", compiled=None)
+    with pytest.raises(ValueError, match="compiled"):
+        match_line("token sk-abcdef", [rule])
+

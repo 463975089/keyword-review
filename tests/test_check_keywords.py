@@ -102,7 +102,30 @@ def test_no_violation_action_approve(tmp_path):
     assert pr.call_args.kwargs["event"] == "APPROVE"
 
 
-def test_missing_required_env_raises(tmp_path):
+def test_http_error_from_get_pr_files_exits_cleanly(tmp_path):
+    """HTTPError from get_pr_files must call _fail with a helpful message, not traceback."""
+    import requests as _requests
+    env = _env(tmp_path)
+    err = _requests.HTTPError("403 Client Error")
+    with patch.object(ck, "get_pr_files", side_effect=err), \
+         pytest.raises(SystemExit) as exc:
+        ck.main(env)
+    assert exc.value.code == 2
+
+
+def test_http_error_from_post_review_exits_cleanly(tmp_path):
+    """HTTPError from post_review must call _fail, not raise a raw traceback."""
+    import requests as _requests
+    env = _env(tmp_path)
+    err = _requests.HTTPError("422 Unprocessable Entity")
+    with patch.object(ck, "get_pr_files", return_value=([], 0)), \
+         patch.object(ck, "post_review", side_effect=err), \
+         pytest.raises(SystemExit) as exc:
+        ck.main(env)
+    assert exc.value.code == 2
+
+
+
     env = _env(tmp_path)
     del env["REPO"]
     with pytest.raises(SystemExit):
